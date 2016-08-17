@@ -17,17 +17,20 @@ describe('Message endpoints', function() {
         mongoose.connection.db.dropDatabase();
         this.alice = {
             username: 'alice',
-            _id: 'AAAAAAAAAAAAAAAAAAAAAAAA'
+            _id: 'AAAAAAAAAAAAAAAAAAAAAAAA',
+            password: 1234
         };
 
         this.bob = {
             username: 'bob',
-            _id: 'BBBBBBBBBBBBBBBBBBBBBBBB'
+            _id: 'BBBBBBBBBBBBBBBBBBBBBBBB',
+            password: 5678
         };
 
         this.chuck = {
             username: 'chuck',
-            _id: 'CCCCCCCCCCCCCCCCCCCCCCCC'
+            _id: 'CCCCCCCCCCCCCCCCCCCCCCCC',
+            password: 90123
         };
 
         // Create users

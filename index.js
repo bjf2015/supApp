@@ -4,6 +4,9 @@ var mongoose = require('mongoose');
 
 var User = require('./models/user');
 var Message = require('./models/message');
+var url = require('url');
+var queryString = require('querystring');
+
 
 var app = express();
 var bcrypt = require('bcrypt');
@@ -49,11 +52,8 @@ app.use(passport.initialize());
 
 app.get('/users', function(req, res) {
     User.find().then(function(users) {
-        //console.log(users);
-        res.redirect(
-            'http://google.com'
-        )
-        //res.json(users);
+
+        res.status(401).json(users);
     });
 });
 //more comments // ADD USER
@@ -134,187 +134,288 @@ app.post('/users', jsonParser, function(req, res) {
         }
 
         return res.status(201).json({});
-
-app.get('/users/:userId', function(req, res) {
-    User.findOneById({
-        _id: req.params.userId
-    }).then(function(user) {
-        if (!user) {
-            res.status(404).json({
-                message: 'User not found'
-            });
-            return;
-        }
-        res.json(user);
-    }).catch(function(err) {
-        console.log(err);
-        res.status(500).send({
-            message: 'Internal server error'
-        });
-    });
+});
+});
+});
 });
 
-app.put('/users/:userId', jsonParser, function(req, res) {
-    if (!req.body) {
-        return res.status(400).json({
-            message: "No request body"
-        });
-    }
+// app.get('/users/:userId', passport.authenticate('basic', {session: false}), function(req, res) {
+//     User.findOneById({
+//         _id: req.params.userId
+//     }).then(function(user) {
+//         if (!user) {
+//             res.status(404).json({
+//                 message: 'User not found'
+//             });
+//             return;
+//         }
+//         res.json(user);
+//     }).catch(function(err) {
+//         console.log(err);
+//         res.status(500).send({
+//             message: 'Internal server error'
+//         });
+//     });
+// });
 
-    if (!('username' in req.body)) {
-        return res.status(422).json({
-            message: 'Missing field: username'
-        });
-    }
+// app.put('/users/:userId', jsonParser, function(req, res) {
+//     if (!req.body) {
+//         return res.status(400).json({
+//             message: "No request body"
+//         });
+//     }
 
-    if (typeof req.body.username !== 'string') {
-        return res.status(422).json({
-            message: 'Incorrect field type: username'
-        });
-    }
+//     if (!('username' in req.body)) {
+//         return res.status(422).json({
+//             message: 'Missing field: username'
+//         });
+//     }
 
-    User.findOneAndUpdate({
-        _id: req.params.userId
-    }, {
-        username: req.body.username
-    }, {
-        upsert: true
-    }).then(function(user) {
-        res.status(200).json({});
-    }).catch(function(err) {
-        console.log(err);
-        res.status(500).send({
-            message: 'Internal server error'
-        });
-    });
-});
+//     if (typeof req.body.username !== 'string') {
+//         return res.status(422).json({
+//             message: 'Incorrect field type: username'
+//         });
+//     }
 
-app.delete('/users/:userId', function(req, res) {
-    User.findOneAndRemove({
-        _id: req.params.userId
-    }).then(function(user) {
-        if (!user) {
-            res.status(404).json({
-                message: 'User not found'
-            });
-            return;
-        }
-        res.status(200).json({});
-    }).catch(function(err) {
-        console.log(err);
-        res.status(500).send({
-            message: 'Internal server error'
-        });
-    });
+//     User.findOneAndUpdate({
+//         _id: req.params.userId
+//     }, {
+//         username: req.body.username
+//     }, {
+//         upsert: true
+//     }).then(function(user) {
+//         res.status(200).json({});
+//     }).catch(function(err) {
+//         console.log(err);
+//         res.status(500).send({
+//             message: 'Internal server error'
+//         });
+//     });
+// });
 
-});
+// app.delete('/users/:userId', function(req, res) {
+//     User.findOneAndRemove({
+//         _id: req.params.userId
+//     }).then(function(user) {
+//         if (!user) {
+//             res.status(404).json({
+//                 message: 'User not found'
+//             });
+//             return;
+//         }
+//         res.status(200).json({});
+//     }).catch(function(err) {
+//         console.log(err);
+//         res.status(500).send({
+//             message: 'Internal server error'
+//         });
+//     });
 
-app.get('/messages', passport.authenticate('basic', {session: false}), function(req, res) {
-    var filter = {};
-    if ('to' in req.query == req.user) {
-        filter.to = req.query.to;
-    }
-    if ('from' in req.query == req.user) {
-        filter.from = req.query.from;
-    }
-    Message.find(filter)
+// });
+
+app.get('/messages', passport.authenticate('basic', {session: false}), jsonParser, function(req, res) {
+    // var query = {};
+    // if (req.query.to != undefined) {
+    //     query['to'] = req.query.to;
+    // }
+    // if (req.query.from != undefined) {
+    //     query['from'] = req.query.from;
+    // }
+    // console.log(req.query.to, "REQUEST");
+    //console.log(req.url, 'req.url' );
+    var a_query = url.parse(req.url).query;
+    console.log(url);
+    var query = queryString.parse(a_query);
+    // console.log(req.user.username)
+    Message.find(query)
         .populate('from')
         .populate('to')
-        .then(function(messages) {
-            res.json(messages);
-        });
-        //if(username !== Mes)
-});
+        .exec(function(err, messages) {
+        if (err) {
+            return res.status(500).json({
+               message: 'Internal Server Error'
+            });
+        }
+        console.log(res.body, "RESPONSE");
+        res.status(200).json(messages);
+    });
+})
 
-app.post('/messages', /*passport.authenticate('basic', {session: false}),*/ jsonParser, function(req, res) {
-    if (req.body.from !== username) {
-        res('Cannot send a message using a different username');
-    }
+// app.get('/messages', passport.authenticate('basic', {session: false}), function(req, res) {
+//     console.log(req);
+//     // var filter = {};
+//     // if ('to' in req.query) {
+//     //     filter.to = req.query.to;
+//     // }
+//     // if ('from' in req.query) {
+//     //     filter.from = req.query.from;
+//     // }
+//     Message.find()
+//         .populate('from')
+//         .populate('to')
+//         .then(function(messages) {
+//             res.json(messages);
+//         });
+//         //if(username !== Mes)
+// });
 
-    if (!req.body) {
-        return res.status(400).json({
-            message: "No request body"
-        });
-    }
-
-    if (!('text' in req.body)) {
+app.post('/messages', passport.authenticate('basic', {session: false}) ,jsonParser, function(req, res) {
+    console.log(req.body, "REQ BODY", req.user);
+    if (!req.body.text) {
         return res.status(422).json({
             message: 'Missing field: text'
         });
     }
-
-    if (typeof req.body.text !== 'string') {
-        return res.status(422).json({
-            message: 'Incorrect field type: text'
-        });
-    }
-
-    if (!('to' in req.body)) {
-        return res.status(422).json({
-            message: 'Missing field: to'
-        });
-    }
-
-    if (typeof req.body.to !== 'string') {
-        return res.status(422).json({
-            message: 'Incorrect field type: to'
-        });
-    }
-
-    if (!('from' in req.body)) {
-        return res.status(422).json({
-            message: 'Missing field: from'
-        });
-    }
-
-    if (typeof req.body.from !== 'string') {
+    else if (!req.body.from) {
         return res.status(422).json({
             message: 'Incorrect field type: from'
-        });
+        })
     }
 
-    var message = new Message({
-        from: req.body.username,
-        to: req.body.to,
-        text: req.body.text
-    });
+    else if (!req.body.to) {
+        return res.status(422).json({
+            message: 'Incorrect field type: to'
+        })
+    }
 
-    var findFrom = User.findOne({
-        _id: message.from
-    });
-    var findTo = User.findOne({
-        _id: message.to
-    });
-
-    return Promise.all([findFrom, findTo]).then(function(results) {
-        if (!results[0]) {
-            res.status(422).json({
-                message: 'Incorrect field value: from'
-            });
-            return null;
-        }
-        else if (!results[1]) {
-            res.status(422).json({
-                message: 'Incorrect field value: to'
-            });
-            return null;
-        }
-        else {
-            return message.save()
-        }
-    }).then(function(user) {
-        if (!user) {
-            // Incorrect field values - handled above.
-            return;
-        }
-        res.location('/messages/' + message._id).status(201).json({});
-    }).catch(function(err) {
-        //console.log(err);
-        res.status(500).send({
-            message: 'Internal server error'
+    else if (typeof req.body.text != 'string') {
+        return res.status(422).json({
+          message: 'Incorrect field type: text'
         });
-    });
-});
+    }
+    else if (typeof req.body.to != 'string') {
+        return res.status(422).json({
+            message: 'Incorrect field type: to'
+        })
+    }
+    else if (typeof req.body.from != 'string') {
+        return res.status(422).json({
+            message: 'Incorrect field type: from'
+        })
+    }
+    else if (!mongoose.Types.ObjectId.isValid(req.body.from)) {
+        console.log("CHECKPOINT 1");
+        return res.status(422).json({
+            message: 'Incorrect field value: from'
+        })
+    }
+    else if (!mongoose.Types.ObjectId.isValid(req.body.to)) {
+        console.log("CHECKPOINT 2");
+        return res.status(422).json({
+            message: 'Incorrect field value: to'
+        })
+    }
+    console.log(req, "REQQQQQQ");
+    console.log(req.body);
+    Message.create({to: req.body.to,
+        from: req.user._id, // change from to user that is signed in
+        text: req.body.text},
+        function(err, messages) {
+            // console.log(err, "ERROR");
+            // console.log(messages, "MESSAGES")
+            // console.log("MADE IT HERE!!!!!!!!!");
+            if (err) {
+                return res.status(422).json({
+                    message: 'Internal Server Error'
+                });
+            }
+            res.location('/messages/' + messages._id);
+            res.status(201).json({});
+        })
+})
+
+
+/// OLD POST
+// app.post('/messages', passport.authenticate('basic', {session: false}), jsonParser, function(req, res) {
+//     console.log(req.user)
+//     if (req.body.from !== username) {
+//         res('Cannot send a message using a different username');
+//     }
+
+//     if (!req.body) {
+//         return res.status(400).json({
+//             message: "No request body"
+//         });
+//     }
+
+//     if (!('text' in req.body)) {
+//         return res.status(422).json({
+//             message: 'Missing field: text'
+//         });
+//     }
+
+//     if (typeof req.body.text !== 'string') {
+//         return res.status(422).json({
+//             message: 'Incorrect field type: text'
+//         });
+//     }
+
+//     if (!('to' in req.body)) {
+//         return res.status(422).json({
+//             message: 'Missing field: to'
+//         });
+//     }
+
+//     if (typeof req.body.to !== 'string') {
+//         return res.status(422).json({
+//             message: 'Incorrect field type: to'
+//         });
+//     }
+
+//     if (!('from' in req.body)) {
+//         return res.status(422).json({
+//             message: 'Missing field: from'
+//         });
+//     }
+
+//     if (typeof req.body.from !== 'string') {
+//         return res.status(422).json({
+//             message: 'Incorrect field type: from'
+//         });
+//     }
+
+//     var message = new Message({
+//         from: req.body.username,
+//         to: req.body.to,
+//         text: req.body.text
+//     });
+
+//     var findFrom = User.findOne({
+//         _id: message.from
+//     });
+//     var findTo = User.findOne({
+//         _id: message.to
+//     });
+
+//     return Promise.all([findFrom, findTo]).then(function(results) {
+//         if (!results[0]) {
+//             res.status(422).json({
+//                 message: 'Incorrect field value: from'
+//             });
+//             return null;
+//         }
+//         else if (!results[1]) {
+//             res.status(422).json({
+//                 message: 'Incorrect field value: to'
+//             });
+//             return null;
+//         }
+//         else {
+//             return message.save()
+//         }
+//     }).then(function(user) {
+//         if (!user) {
+//             // Incorrect field values - handled above.
+//             return;
+//         }
+//         res.location('/messages/' + message._id).status(201).json({});
+//     }).catch(function(err) {
+//         //console.log(err);
+//         res.status(500).send({
+//             message: 'Internal server error'
+//         });
+//     });
+// });
 
 app.get('/messages/:messageId', function(req, res) {
     Message.findOne({
@@ -337,10 +438,10 @@ app.get('/messages/:messageId', function(req, res) {
         });
     });
 });
-});
-});
-});
-});
+// });
+// });
+// });
+// });
 
 mongoose.connect('mongodb://localhost/auth').then(function() {
     app.listen(8080);

@@ -50,10 +50,10 @@ passport.use(strategy);
 app.use(passport.initialize());
 
 
-app.get('/users', function(req, res) {
-    User.find().then(function(users) {
-
-        res.status(401).json(users);
+app.get('/users', passport.authenticate('basic', {session: false}), function(req, res) {
+    console.log(req.user)
+    User.find({username: req.user.username}).then(function(users) {
+        res.status(401).json({'Your username': users[0].username});
     });
 });
 //more comments // ADD USER
@@ -214,15 +214,16 @@ app.post('/users', jsonParser, function(req, res) {
 // });
 
 app.get('/messages', passport.authenticate('basic', {session: false}), jsonParser, function(req, res) {
-    // var query = {};
-    // if (req.query.to != undefined) {
-    //     query['to'] = req.query.to;
-    // }
-    // if (req.query.from != undefined) {
-    //     query['from'] = req.query.from;
-    // }
-    // console.log(req.query.to, "REQUEST");
-    //console.log(req.url, 'req.url' );
+    var query = {};
+    if (req.query.to != undefined) {
+        query['to'] = req.query.to;
+    }
+    if (req.query.from != undefined) {
+        query['from'] = req.query.from;
+    }
+    console.log(url)
+    console.log(req.query.to, "REQUEST");
+    console.log(req.url, 'req.url' );
     var a_query = url.parse(req.url).query;
     console.log(url);
     var query = queryString.parse(a_query);
@@ -242,14 +243,14 @@ app.get('/messages', passport.authenticate('basic', {session: false}), jsonParse
 })
 
 // app.get('/messages', passport.authenticate('basic', {session: false}), function(req, res) {
-//     console.log(req);
-//     // var filter = {};
-//     // if ('to' in req.query) {
-//     //     filter.to = req.query.to;
-//     // }
-//     // if ('from' in req.query) {
-//     //     filter.from = req.query.from;
-//     // }
+//     console.log(req.query);
+//     var filter = {};
+//     if ('to' in req.query) {
+//         filter.to = req.query.to;
+//     }
+//     if ('from' in req.query) {
+//         filter.from = req.query.from;
+//     }
 //     Message.find()
 //         .populate('from')
 //         .populate('to')
@@ -260,7 +261,11 @@ app.get('/messages', passport.authenticate('basic', {session: false}), jsonParse
 // });
 
 app.post('/messages', passport.authenticate('basic', {session: false}) ,jsonParser, function(req, res) {
-    console.log(req.body, "REQ BODY", req.user);
+    console.log(req.body, "REQ BODY", "req.user", req.user);
+    if (req.body.from !== req.user._id) {
+        res.status(403).json({'message':'Cannot send a message using a different username'});
+    }
+
     if (!req.body.text) {
         return res.status(422).json({
             message: 'Missing field: text'
@@ -305,6 +310,7 @@ app.post('/messages', passport.authenticate('basic', {session: false}) ,jsonPars
             message: 'Incorrect field value: to'
         })
     }
+    else if (req.body.from == req.user.username) {
     console.log(req, "REQQQQQQ");
     console.log(req.body);
     Message.create({to: req.body.to,
@@ -322,6 +328,7 @@ app.post('/messages', passport.authenticate('basic', {session: false}) ,jsonPars
             res.location('/messages/' + messages._id);
             res.status(201).json({});
         })
+    }
 })
 
 

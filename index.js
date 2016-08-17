@@ -214,12 +214,15 @@ app.post('/users', jsonParser, function(req, res) {
 // });
 
 app.get('/messages', passport.authenticate('basic', {session: false}), jsonParser, function(req, res) {
-    var query = {};
+    var query = {
+        to: req.user._id,
+        from: req.user._id
+    }
     if (req.query.to != undefined) {
-        query['to'] = req.query.to;
+        query['to'] = req.user._id;
     }
     if (req.query.from != undefined) {
-        query['from'] = req.query.from;
+        query['from'] = req.user._id;
     }
     console.log(url)
     console.log(req.query.to, "REQUEST");
@@ -227,10 +230,26 @@ app.get('/messages', passport.authenticate('basic', {session: false}), jsonParse
     var a_query = url.parse(req.url).query;
     console.log(url);
     var query = queryString.parse(a_query);
+    // console.log(query, "QUERY")
     // console.log(req.user.username)
-    Message.find(query)
+    // console.log(req.user)
+    // console.log(req.query)
+    console.log(req.user)
+    // Message.find({
+    //     to: req.user._id
+    // })
+    // .populate('from')
+    // .populate('to')
+    // .exec(function(messages) {
+    //     console.log(messages)
+    //     res.json(messages);
+    // });
+    Message.find()
         .populate('from')
         .populate('to')
+        .or([{'from': req.user._id}, {'to': req.user._id}])
+ //       .where('from').equals(req.user._id)
+  //      .where('to').equals(req.user._id)
         .exec(function(err, messages) {
         if (err) {
             return res.status(500).json({
@@ -238,6 +257,7 @@ app.get('/messages', passport.authenticate('basic', {session: false}), jsonParse
             });
         }
         console.log(res.body, "RESPONSE");
+        console.log(messages)
         res.status(200).json(messages);
     });
 })
@@ -262,7 +282,7 @@ app.get('/messages', passport.authenticate('basic', {session: false}), jsonParse
 
 app.post('/messages', passport.authenticate('basic', {session: false}) ,jsonParser, function(req, res) {
     console.log(req.body, "REQ BODY", "req.user", req.user);
-    if (req.body.from !== req.user._id) {
+    if (req.body.from != req.user._id) {
         res.status(403).json({'message':'Cannot send a message using a different username'});
     }
 
@@ -310,10 +330,15 @@ app.post('/messages', passport.authenticate('basic', {session: false}) ,jsonPars
             message: 'Incorrect field value: to'
         })
     }
-    else if (req.body.from == req.user.username) {
+    else if (req.body.from == req.user._id) {
     console.log(req, "REQQQQQQ");
     console.log(req.body);
-    Message.create({to: req.body.to,
+
+    console.log('from vs to')
+    console.log('to', req.body.to);
+    console.log('from', req.user._id);
+    Message.create({
+        to: mongoose.Types.ObjectId(req.body.to),
         from: req.user._id, // change from to user that is signed in
         text: req.body.text},
         function(err, messages) {
